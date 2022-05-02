@@ -1,6 +1,10 @@
 from tinydb import Query, TinyDB
 from datetime import datetime
 import redis
+#Global Variables
+
+ # The current number of events staring from one
+eventlog_num = 1
 
 # Get the data from the databases
 users_db = TinyDB('./db/users.json')
@@ -13,6 +17,13 @@ r = redis.Redis(host= 'localhost',port= '6379', charset="utf-8", decode_response
 
 # Initialize the query object
 q = Query()
+
+def add_eventlog(userID, event_type):
+    global eventlog_num
+    eventsLogs_db.insert({'event_id': eventlog_num, 'userID': userID , 'event_type': event_type, 'timestamp': datetime.now().isoformat()})
+    eventlog_num +=1
+    return
+
 
 def activate_meeting():
     meetingID = input('Enter the meeting ID: ')
@@ -31,11 +42,12 @@ def activate_meeting():
             return
     else:
             print('Meeting does not exist!')
+        
+        
 
 
 def join_active_meeting():
     userID = input('Enter the user ID: ')
-
     if users_db.search(q.userID == int(userID)):
         meetingID = input('Enter the meeting ID: ')
         orderID = input('Enter the order ID: ')
