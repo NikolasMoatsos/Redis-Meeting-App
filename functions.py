@@ -1,35 +1,26 @@
-from tinydb import Query, TinyDB
 from datetime import datetime
 import redis
-#Global Variables
+import sqlite3
 
- # The current number of events staring from one
-eventlog_num = 1
-
-# Get the data from the databases
-users_db = TinyDB('./db/users.json')
-meetings_db = TinyDB('./db/meetings.json')
-meeting_instances_db = TinyDB('./db/meeting_instances.json')
-eventsLogs_db = TinyDB('./db/eventsLogs.json')
+# connecting to the database
+connection = sqlite3.connect("redis.db")
+crsr = connection.cursor()
 
 # Initialize the redis object
 r = redis.Redis(host= 'localhost',port= '6379', charset="utf-8", decode_responses=True)
 
-# Initialize the query object
-q = Query()
-
-def add_eventlog(userID, event_type):
-    global eventlog_num
-    eventsLogs_db.insert({'event_id': eventlog_num, 'userID': userID , 'event_type': event_type, 'timestamp': datetime.now().isoformat()})
-    eventlog_num +=1
-    return
+# The current number of events staring from one
+eventlog_num = 1
 
 
 def activate_meeting():
     meetingID = input('Enter the meeting ID: ')
     orderID = input('Enter the order ID: ')
 
-    if meeting_instances_db.search((q.meetingID == int(meetingID)) & (q.orderID == int(orderID))):
+    crsr.execute("SELECT meetingID, orderID FROM meeting_instances")
+    ans = crsr.fetchall()
+
+    if (int(meetingID), int(orderID)) in ans:
 
         m = meetingID + ":" + orderID
 
@@ -44,22 +35,30 @@ def activate_meeting():
             print('Meeting does not exist!')
         
         
-
-
 def join_active_meeting():
     userID = input('Enter the user ID: ')
-    if users_db.search(q.userID == int(userID)):
+
+    crsr.execute("SELECT userID FROM users")
+    ans = crsr.fetchall()
+
+    if (int(userID),) in ans:
         meetingID = input('Enter the meeting ID: ')
         orderID = input('Enter the order ID: ')
 
-        if meeting_instances_db.search((q.meetingID == int(meetingID)) & (q.orderID == int(orderID))):
+        crsr.execute("SELECT meetingID, orderID FROM meeting_instances")
+        ans = crsr.fetchall()
+
+        if (int(meetingID), int(orderID)) in ans:
             m = meetingID + ":" + orderID
 
             if not r.sismember('active_meetings', m):
                 print('Meeting not active!')
                 return
             else:
-                if meetings_db.search((q.meetingID == int(meetingID)) & (q.audience.any([int(userID)]))):
+                crsr.execute("SELECT audience FROM meetings WHERE meetingID =?", [meetingID])
+                ans = crsr.fetchall()
+
+                if userID in ans[0][0].split(',') :
                     k = 'meeting:' + m
 
                     if r.sismember(k, userID):
@@ -180,7 +179,8 @@ def show_active_meeting_user_messages():
     pass
 
 
-# activate_meeting(6,3)
-# a = show_active_meetings()
-# print(a)
-# print(r.smembers('meeting:1:6'))
+def add_eventlog(userID, event_type):
+    global eventlog_num
+    eventsLogs_db.insert({'event_id': eventlog_num, 'userID': userID , 'event_type': event_type, 'timestamp': datetime.now().isoformat()})
+    eventlog_num +=1
+    return
