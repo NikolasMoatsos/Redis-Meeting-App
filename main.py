@@ -13,6 +13,10 @@ def main():
                 \n4)Show meeting’s current participants \
                 \n5)Show active meetings \
                 \n6)End a meeting \
+                \n7)Post a message \
+                \n8)Show a meeting\'s chat \
+                \n9)Show the join time of the users \
+                \n10)Show all messages from a specific user in meeting \
                 \n11)Exit')
         selection = input('Select an option: ')
         print('')
@@ -29,6 +33,14 @@ def main():
             functions.show_active_meetings()
         elif selection == '6':
             functions.end_meeting()
+        elif selection == '7':
+            functions.post_chat_message()
+        elif selection == '8':
+            functions.show_meeting_chat()
+        elif selection == '9':
+            functions.show_active_meetings_participants_join_time()
+        elif selection == '10':
+            functions.show_active_meeting_user_messages()
         elif selection == '11':
             end = True
         else:

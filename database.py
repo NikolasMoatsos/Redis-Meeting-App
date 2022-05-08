@@ -6,8 +6,6 @@ connection = sqlite3.connect("redis.db")
 # cursor
 crsr = connection.cursor()
 
-print("Connected to the database")
-
 # drop tables to re-initiate
 drop_tables = """DROP TABLE eventsLogs;
 DROP TABLE meeting_instances;
@@ -27,7 +25,7 @@ meetingID INTEGER PRIMARY KEY,
 title VARCHAR(50), 
 description VARCHAR(200), 
 isPublic BOOLEAN, 
-audience CHAR(50));"""
+audience CHAR(200));"""
 
 meeting_instances_table = """CREATE TABLE meeting_instances ( 
 meetingID INTEGER, 
@@ -59,10 +57,10 @@ insert_meetings = """
 INSERT INTO meetings
   (meetingID, title, description, isPublic, audience)
 VALUES
-  (1, 'Green Chemistry', 'A meeting to discuss about the current trends in environmentally friendly chemistry', TRUE, '2,1'), 
-  (2, 'Deep Learning & NLP', 'A meeting to discuss about the state-of-art neural network architectures for language models', TRUE, '2,3,4'),
-  (3, 'Cryptocurrencies & Blockchain', 'A meeting to discuss about the upcoming crypto projects, that will dominate the economy', FALSE, '5,1,4'),
-  (4, 'Metaverse', 'A meeting to discuss about the possible applications of the metaverse', TRUE, '3,5');"""
+  (1, 'Green Chemistry', 'A meeting to discuss about the current trends in environmentally friendly chemistry', TRUE, 'hpotter@mail.com,rsanchez@mail.com'), 
+  (2, 'Deep Learning & NLP', 'A meeting to discuss about the state-of-art neural network architectures for language models', TRUE, 'hpotter@mail.com,pbeesly@mail.com,rgreen@mail.com'),
+  (3, 'Cryptocurrencies & Blockchain', 'A meeting to discuss about the upcoming crypto projects, that will dominate the economy', FALSE, 'lhamilton@mail.com,rsanchez@mail.com,rgreen@mail.com'),
+  (4, 'Metaverse', 'A meeting to discuss about the possible applications of the metaverse', TRUE, 'pbeesly@mail.com,lhamilton@mail.com');"""
 
 insert_meeting_instances = """
 INSERT INTO meeting_instances
@@ -87,6 +85,8 @@ crsr.execute(insert_meetings)
 crsr.execute(insert_meeting_instances)
 
 connection.commit()
+
+print("The database was created successfully!")
 
 # close the connection
 connection.close()
