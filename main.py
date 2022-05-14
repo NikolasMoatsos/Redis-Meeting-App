@@ -2,6 +2,7 @@ import functions
 
 
 def main():
+    functions.start_app()
     print('Welcome to the Redis Meeting App!')
 
     end = False
@@ -18,6 +19,7 @@ def main():
                 \n9)Show the join time of the users \
                 \n10)Show all messages from a specific user in meeting \
                 \n11)Exit')
+
         selection = input('Select an option: ')
         print('')
         try:
@@ -43,9 +45,26 @@ def main():
                 functions.show_active_meeting_user_messages()
             elif selection == '11':
                 end = True
+                continue
             else:
-                print('Not valid option!')
+                print('Not a valid option!')
+                continue
+
+            cont = False
+            while cont == False:
+                ans = input('\nDo you want to continue? (Y/n): ')
+                if ans.lower() == 'y':
+                    cont = True
+                    continue
+                elif ans.lower() == 'n':
+                    cont = True
+                    end = True
+                    continue
+                else:
+                    print('Not a valid option!')
+
         except Exception:
             print('Something went wrong! Going back to the menu.')
+    functions.end_app()
 
 main()

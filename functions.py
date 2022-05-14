@@ -2,16 +2,21 @@ from datetime import datetime
 import redis
 import sqlite3
 
-# connecting to the database
-connection = sqlite3.connect("redis.db")
-crsr = connection.cursor()
+connection= None
+crsr = None
+r = None
 
-# Initialize the redis object
-r = redis.Redis(host= 'localhost',port= '6379', charset="utf-8", decode_responses=True)
+def start_app():
+    global connection, crsr
+    connection = sqlite3.connect("redis.db")
+    crsr = connection.cursor()
 
-# The current number of events staring from one
-eventlog_num = 1
+    global r
+    r = redis.Redis(host= 'localhost',port= '6379', charset="utf-8", decode_responses=True)
 
+def end_app():
+    connection.commit()
+    connection.close()
 
 def activate_meeting():
     meetingID = input('Enter the meeting ID: ')
@@ -53,28 +58,39 @@ def join_active_meeting():
             m = meetingID + ":" + orderID
 
             if r.sismember('active_meetings', m):
-                crsr.execute("SELECT audience FROM meetings WHERE meetingID =?", [meetingID])
-                audience_ans = crsr.fetchall()
+                crsr.execute("SELECT isPublic,audience FROM meetings WHERE meetingID =?", [meetingID])
+                meeting_ans = crsr.fetchall()
 
                 crsr.execute("SELECT email,name FROM users WHERE userID =?", [userID])
                 user_ans = crsr.fetchall()
+                if not meeting_ans[0][0]:
+                    if user_ans[0][0] in meeting_ans[0][1].split(',') :
+                        m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
 
-                if user_ans[0][0] in audience_ans[0][0].split(',') :
-                    # k = 'meeting:' + m
+                        if not r.hexists(m_key_hash_join, userID):
+                            now = round(datetime.timestamp(datetime.now()))
+                            r.hset(m_key_hash_join, userID, now)
+                            print('User ' + user_ans[0][1] + ' joined the meeting ' + meetingID + ':' + orderID)
+                            add_eventlog(userID, 'Meeting_join')
+                            return
+                        else:
+                            print('Already joined!')
+                            return
+                    else:
+                        print('The user is not in the audience!')
+                        return
+                else:
                     m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
 
                     if not r.hexists(m_key_hash_join, userID):
                         now = round(datetime.timestamp(datetime.now()))
                         r.hset(m_key_hash_join, userID, now)
-                        # r.sadd(k, userID)
                         print('User ' + user_ans[0][1] + ' joined the meeting ' + meetingID + ':' + orderID)
+                        add_eventlog(userID, 'Meeting_join')
                         return
                     else:
                         print('Already joined!')
                         return
-                else:
-                    print('The user is not in the audience!')
-                    return
             else:
                 print('Meeting not active!')
                 return
@@ -103,13 +119,12 @@ def leave_meeting():
             m = meetingID + ":" + orderID
 
             if r.sismember('active_meetings', m):
-                # k = 'meeting:' + m
                 m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
 
                 if r.hexists(m_key_hash_join, userID):
-                    # r.srem(k, userID)
                     r.hdel(m_key_hash_join, userID)
                     print('User ' + userID + ' left the meeting ' + meetingID + ':' + orderID)
+                    add_eventlog(userID, 'Meeting_leave')
                     return  
                 else:
                     print('Not in the meeting!')
@@ -136,7 +151,6 @@ def show_participants():
         m = meetingID + ":" + orderID
 
         if r.sismember('active_meetings', m):
-            # k = 'meeting:' + m
             m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
             participants = r.hgetall(m_key_hash_join)
 
@@ -182,11 +196,9 @@ def end_meeting():
         if r.sismember('active_meetings', m):
             r.srem('active_meetings', m)
 
-            # k = 'meeting:' + m
             m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
             keys_del = r.hgetall(m_key_hash_join).keys()
             r.hdel(m_key_hash_join, *keys_del)
-            # r.delete(k)
             print('Meeting ' + m + ' ended and all participants left!')
             return
         else:
@@ -214,7 +226,6 @@ def post_chat_message():
             users_ans = crsr.fetchall()
 
             if (int(userID),) in users_ans:
-                # k = 'meeting:' + m
                 m_key_hash_join = 'meeting:' + meetingID + ':order:' + orderID + ':join'
 
                 if  r.hexists(m_key_hash_join, userID):
@@ -227,6 +238,7 @@ def post_chat_message():
                     r.hset(m_key_hash_message, message_id, message)
                     r.hset(m_key_hash_user, message_id, userID)
                     r.rpush(m_key_list,message_id)
+                    add_eventlog(userID, 'Meeting__message_post')
                     return
                 else:
                     print('Not in the meeting!')
@@ -255,13 +267,14 @@ def show_meeting_chat():
     
         if r.sismember('active_meetings', m):
             m_key_hash_message = 'meeting:' + meetingID + ':order:' + orderID + ':messages'
+            m_key_hash_user = 'meeting:' + meetingID + ':order:' + orderID + ':user'
             m_key_list = 'meeting:' + meetingID + ':order:' + orderID + ':message_order'
             chat_order = r.lrange(m_key_list, 0, -1)
 
             if len(chat_order) > 0:
                 print('{} Meeting Chat:'.format(m))
                 for i in range(len(chat_order)):
-                    print('Message {}: {}'.format(i + 1, r.hget(m_key_hash_message, chat_order[i])))
+                    print('Message {} from user {}: {}'.format(i + 1, r.hget(m_key_hash_user, chat_order[i]), r.hget(m_key_hash_message, chat_order[i])))
                 return
             else:
                 print('No messages in the chat!')
@@ -289,7 +302,7 @@ def show_active_meetings_participants_join_time():
                 for user,time in joins.items():
                     print('User {} joined at {}'.format(user,datetime.fromtimestamp(int(time))))
             else:
-                print('No user joined this meeting!')
+                print('No current users!')
     else:
         print('No active meetings')
 
@@ -345,11 +358,11 @@ def show_active_meeting_user_messages():
         return
 
 
-# def add_eventlog(userID, event_type):
-#     global eventlog_num
-#     eventsLogs_db.insert({'event_id': eventlog_num, 'userID': userID , 'event_type': event_type, 'timestamp': datetime.now().isoformat()})
-#     eventlog_num +=1
-#     return
+def add_eventlog(userID, event_type):
+    now = datetime.now()
+    insert_eventLog = "INSERT INTO eventsLogs (userID, event_type, timestamp) VALUES (?, ?, ?);"
+    crsr.execute(insert_eventLog, (userID, event_type, now))
+    return
 
 # crsr.execute("SELECT fromdatetime FROM meeting_instances WHERE meetingID =? AND orderID =?", [1,1])
 # meeting_ans = crsr.fetchall()
@@ -363,3 +376,9 @@ def show_active_meeting_user_messages():
 # a= r.hgetall(m)
 # for j in a.keys():
 #     print(j)
+# start_app()
+# crsr.execute("SELECT event_id, userID, event_type FROM eventsLogs")
+# meeting_ans = crsr.fetchall()
+# print(meeting_ans)
+
+# add_eventlog(1, 'lol')

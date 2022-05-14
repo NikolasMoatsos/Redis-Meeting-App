@@ -36,7 +36,7 @@ CONSTRAINT meeting_instances_PK PRIMARY KEY (meetingID, orderID),
 FOREIGN KEY (meetingID) REFERENCES meetings(meetingID));"""
 
 eventsLogs_table = """CREATE TABLE eventsLogs ( 
-event_id INTEGER PRIMARY KEY, 
+event_id INTEGER PRIMARY KEY AUTOINCREMENT, 
 userID INTEGER, 
 event_type VARCHAR(50), 
 timestamp DATETIME,
@@ -57,10 +57,10 @@ insert_meetings = """
 INSERT INTO meetings
   (meetingID, title, description, isPublic, audience)
 VALUES
-  (1, 'Green Chemistry', 'A meeting to discuss about the current trends in environmentally friendly chemistry', TRUE, 'hpotter@mail.com,rsanchez@mail.com'), 
-  (2, 'Deep Learning & NLP', 'A meeting to discuss about the state-of-art neural network architectures for language models', TRUE, 'hpotter@mail.com,pbeesly@mail.com,rgreen@mail.com'),
+  (1, 'Green Chemistry', 'A meeting to discuss about the current trends in environmentally friendly chemistry', FALSE, 'hpotter@mail.com,rsanchez@mail.com'), 
+  (2, 'Deep Learning & NLP', 'A meeting to discuss about the state-of-art neural network architectures for language models', FALSE, 'hpotter@mail.com,pbeesly@mail.com,rgreen@mail.com'),
   (3, 'Cryptocurrencies & Blockchain', 'A meeting to discuss about the upcoming crypto projects, that will dominate the economy', FALSE, 'lhamilton@mail.com,rsanchez@mail.com,rgreen@mail.com'),
-  (4, 'Metaverse', 'A meeting to discuss about the possible applications of the metaverse', TRUE, 'pbeesly@mail.com,lhamilton@mail.com');"""
+  (4, 'Metaverse', 'A meeting to discuss about the possible applications of the metaverse', TRUE, NULL);"""
 
 insert_meeting_instances = """
 INSERT INTO meeting_instances
